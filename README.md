@@ -50,7 +50,7 @@ This project focuses on developing an **end-to-end Information Retrieval (IR) ch
 
 ## User Interface Preview
 
-![Chatbot UI](images/9c4959f0-46a1-446e-8032-d8711e987b08.jpg "Preview of Chatbot Interface")
+![Chatbot UI](image/9c4959f0-46a1-446e-8032-d8711e987b08.jpg "Preview of Chatbot Interface")
 
 
 
