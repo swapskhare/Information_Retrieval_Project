@@ -35,13 +35,19 @@ That's it! Open `http://localhost:8000` in your browser! 🎉
 - [Quick Start](#-quick-start)
 - [Project Overview](#-project-overview)
 - [Features](#-features)
+  - [Core Components](#core-components)
+  - [Topics Covered](#topics-covered)
 - [Project Structure](#-project-structure)
 - [Setup Instructions](#-setup-instructions)
 - [Data Setup](#-data-setup)
+- [Running the Application](#-running-the-application)
 - [Usage Guide](#-usage-guide)
 - [API Documentation](#-api-documentation)
 - [Architecture](#-architecture)
 - [Development](#-development)
+- [Technical Stack](#-technical-stack)
+- [Performance](#-performance)
+- [Troubleshooting](#-troubleshooting)
 
 ## 🎯 Project Overview
 
@@ -81,7 +87,10 @@ The system operates in two modes:
   - FastAPI-based REST API
   - Dual-mode operation (chit-chat + query)
   - Real-time summarization with BART
+  - Query complexity analysis (dynamically retrieves 1-5 documents)
   - Response tracking and analytics
+  - GPU/CPU automatic detection with manual override
+  - Background model loading with status tracking
 
 ### Topics Covered
 
@@ -100,6 +109,9 @@ Information_Retrieval_Project/
 ├── Makefile                  # Build automation
 ├── setup.sh                  # Setup script
 ├── requirements.txt          # Python dependencies
+├── pyproject.toml            # Black code formatter configuration
+├── tailwind.config.js        # Tailwind CSS configuration
+├── package.json              # Node.js dependencies (Tailwind CSS)
 ├── .env.example              # Environment variables template
 │
 ├── templates/
@@ -254,9 +266,11 @@ make map-docs  # Generate document mapping
 ### Query Mode
 
 1. **Select a topic** from the left sidebar (e.g., "Technology", "Health")
-2. The system switches to query mode
+2. The system switches to query mode (selected topic is highlighted in blue)
 3. **Ask topic-specific questions** (e.g., "Tell me about artificial intelligence")
-4. The system retrieves and summarizes relevant information
+4. The system analyzes query complexity and retrieves 1-5 relevant documents
+5. **View analytics** in the right sidebar showing response times, documents retrieved, and topic popularity
+6. **Deselect topic** by clicking the same topic button again to return to chit-chat mode
 
 ### Example Queries
 
@@ -306,8 +320,33 @@ Selects a topic and switches to query mode.
 }
 ```
 
+#### `POST /api/deselect_topic`
+Deselects the current topic and returns to chit-chat mode.
+
+**Request:**
+No body required.
+
+**Response:**
+```json
+{
+  "message": "Returned to chit-chat mode"
+}
+```
+
+#### `GET /api/status`
+Returns the loading status of models and data.
+
+**Response:**
+```json
+{
+  "loading": false,
+  "progress": "Ready!",
+  "loaded": true
+}
+```
+
 #### `POST /api/retrieve_and_summarize`
-Retrieves and summarizes documents for a query.
+Retrieves and summarizes documents for a query. The system automatically determines query complexity and retrieves 1-5 documents accordingly.
 
 **Request:**
 ```json
@@ -320,11 +359,13 @@ Retrieves and summarizes documents for a query.
 ```json
 {
   "summary": "Artificial intelligence (AI) is...",
-  "response_time": 5234.56,
+  "response_time": 5.234,
   "docs_retrieved_count": 3,
   "topic": "Technology"
 }
 ```
+
+**Note**: The number of documents retrieved (1-5) is determined automatically based on query complexity. Simple queries retrieve fewer documents, while complex queries retrieve more.
 
 ## 🏗️ Architecture
 
@@ -349,6 +390,14 @@ Retrieves and summarizes documents for a query.
          │
          ▼
 ┌─────────────────┐
+│ Query Complexity│
+│ Analysis        │
+│ (Determine 1-5  │
+│  documents)     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
 │ Inverted Index  │
 │ (TF-IDF Scoring)│
 └────────┬────────┘
@@ -357,6 +406,8 @@ Retrieves and summarizes documents for a query.
 ┌─────────────────┐
 │ Top-K Documents │
 │ Retrieval       │
+│ (Filtered by    │
+│  Topic)         │
 └────────┬────────┘
          │
          ▼
@@ -369,12 +420,14 @@ Retrieves and summarizes documents for a query.
 ┌─────────────────┐
 │ BART            │
 │ Summarization   │
+│ (Dynamic length)│
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
 │  Summary        │
-│  Response       │
+│  Response +     │
+│  Analytics      │
 └─────────────────┘
 ```
 
@@ -385,14 +438,19 @@ Retrieves and summarizes documents for a query.
 ```bash
 make help          # Show all available commands
 make setup         # Complete setup
+make setup-fresh   # Recreate venv from scratch
 make install       # Install dependencies only
 make run           # Run development server
+make run-cpu       # Run in CPU-only mode (FORCE_CPU=1)
 make run-prod      # Run production server
 make scrape        # Scrape Wikipedia data
 make index         # Build inverted index
 make map-docs      # Generate document mapping
 make build-data    # Build all data files
 make clean         # Remove cache files
+make lint          # Run pylint on Python files
+make format        # Format code with black
+make format-check  # Check code formatting without changes
 ```
 
 ### Code Structure
@@ -410,6 +468,14 @@ Copy `.env.example` to `.env` and configure:
 cp .env.example .env
 # Edit .env with your settings
 ```
+
+**Available Environment Variables:**
+- `FORCE_CPU=1`: Force CPU-only mode (useful if GPU is unavailable or to reduce memory usage)
+  ```bash
+  FORCE_CPU=1 make run
+  # or
+  make run-cpu
+  ```
 
 ## 🛠️ Technical Stack
 
@@ -429,11 +495,18 @@ cp .env.example .env
 
 ## 📊 Performance
 
-- **Model Loading**: ~2-3GB RAM (BlenderBot + BART)
+- **Model Loading**: 
+  - ~2-3GB RAM (BlenderBot + BART)
+  - Models load in background on startup
+  - Loading progress tracked via `/api/status` endpoint
 - **Response Times**:
   - Chit-chat: ~100-500ms
-  - Query mode: 2-70 seconds
+  - Query mode: 2-70 seconds (depends on query complexity and number of documents)
 - **Index Size**: ~50,000+ documents
+- **Query Processing**:
+  - Simple queries: 1-2 documents retrieved (~2-10 seconds)
+  - Medium queries: 2-3 documents retrieved (~10-30 seconds)
+  - Complex queries: 3-5 documents retrieved (~30-70 seconds)
 
 ## 🐛 Troubleshooting
 
@@ -474,14 +547,27 @@ cp .env.example .env
 5. **Memory errors**
    - Ensure 8GB+ RAM available
    - Close other applications
-   - Consider using CPU-only models
+   - Use CPU-only mode: `make run-cpu` or `FORCE_CPU=1 make run`
+
+6. **Models still loading**
+   - Wait for the loading overlay to disappear
+   - Check status: `curl http://localhost:8000/api/status`
+   - Models load in background; server accepts connections immediately
+
+7. **GPU not detected**
+   - System automatically falls back to CPU
+   - To explicitly use CPU: `make run-cpu`
+   - GPU detection happens automatically on startup
 
 ### Next Steps After Setup
 
-1. **Try chit-chat mode** (default) - Start a casual conversation
-2. **Select a topic** from the sidebar to switch to query mode
-3. **Ask topic-specific questions** - Get AI-powered summaries
-4. **Check query history** - View `data/results.json` for all queries and responses
+1. **Wait for models to load** - A loading overlay will appear until models are ready
+2. **Try chit-chat mode** (default) - Start a casual conversation with BlenderBot
+3. **Select a topic** from the sidebar to switch to query mode
+4. **Ask topic-specific questions** - Get AI-powered summaries with automatic complexity analysis
+5. **View analytics** - Check the right sidebar for response time trends, documents retrieved, and topic popularity
+6. **Deselect topic** - Click the same topic button again to return to chit-chat mode
+7. **Check query history** - View `data/results.json` for all queries, responses, and response times
 
 ## 📝 License
 
