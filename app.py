@@ -29,14 +29,14 @@ blenderbot_model = BlenderbotForConditionalGeneration.from_pretrained("facebook/
 summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=-1)  # Use GPU (device=0) or CPU (device=-1)
 
 # Load postings list
-with open("postings_list.json", "r") as f:
+with open("data/postings_list.json", "r") as f:
     postings_list = json.load(f)
 
 # Load documents
-with open("all_topics_wikipedia_data.json", "r") as f:
+with open("data/all_topics_wikipedia_data.json", "r") as f:
     documents = json.load(f)
 
-with open("doc_id_to_url.json", "r") as f:
+with open("data/doc_id_to_url.json", "r") as f:
     doc_id_to_url = json.load(f)
 
 # Global state for selected topic and chit-chat mode
@@ -214,7 +214,7 @@ def save_query_to_json(query, result, response_time, topic):
     """
     Save the query, its result, and response time to results.json.
     """
-    file_path = "results.json"
+    file_path = "data/results.json"
     if os.path.exists(file_path):
         with open(file_path, "r") as file:
             data = json.load(file)

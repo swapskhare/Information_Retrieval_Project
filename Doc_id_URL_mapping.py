@@ -1,7 +1,7 @@
 import json
 
 # Load documents
-with open("all_topics_wikipedia_data.json", "r") as f:
+with open("data/all_topics_wikipedia_data.json", "r") as f:
     documents = json.load(f)
 
 # Create a mapping from doc_id to URL
@@ -13,6 +13,6 @@ for topic_docs in documents.values():
             doc_id_to_url[doc_id] = doc.get("URL", "")
 
 # Save the mapping to a file
-with open("doc_id_to_url.json", "w") as f:
+with open("data/doc_id_to_url.json", "w") as f:
     json.dump(doc_id_to_url, f)
 print("doc_id_to_url mapping saved!")

@@ -25,7 +25,7 @@ def preprocess_text(text):
 
 # Load and Prepare Data
 
-file_path = './all_topics_wikipedia_data_p3.json'
+file_path = './data/all_topics_wikipedia_data.json'
 
 with open(file_path, 'r', encoding='utf-8') as file:
     data = json.load(file)

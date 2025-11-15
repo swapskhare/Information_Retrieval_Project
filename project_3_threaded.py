@@ -129,7 +129,7 @@ def main():
                 except Exception as e:
                     logging.error(f"An error occurred: {e}")
 
-        combine_intermediate_results("all_data_wikipedia.json")
+        combine_intermediate_results("data/all_topics_wikipedia_data.json")
 
 def combine_intermediate_results(final_filename):
     all_data = {}
