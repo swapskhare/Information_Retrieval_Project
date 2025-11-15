@@ -1,6 +1,8 @@
 // List of topics
 const topics = ["Health", "Environment", "Technology", "Economy", "Entertainment", "Sports", "Politics", "Education", "Food", "Travel"];
 let topicSelected = false;  // Track if a topic has been selected
+let selectedTopicButton = null;  // Track the currently selected topic button
+let currentSelectedTopic = null;  // Track the currently selected topic name
 
 let responseTimes = [];
 let docsRetrieved = [];
@@ -9,6 +11,34 @@ let topicFrequency = {};
 // Function to handle topic selection
 async function selectTopic(topic) {
     try {
+        // If clicking the same topic, deselect it
+        if (currentSelectedTopic === topic && topicSelected) {
+            // Deselect topic
+            const response = await fetch("/api/deselect_topic", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            });
+            const data = await response.json();
+            
+            // Remove blue highlighting
+            if (selectedTopicButton) {
+                selectedTopicButton.classList.remove("bg-blue-600", "ring-2", "ring-blue-400");
+                selectedTopicButton.classList.add("bg-gray-700");
+                selectedTopicButton = null;
+            }
+            
+            currentSelectedTopic = null;
+            topicSelected = false;
+            addMessage(data.message || "Returned to chit-chat mode. Feel free to chat about anything!", false);
+            return;
+        }
+        
+        // Remove blue highlighting from previously selected button
+        if (selectedTopicButton) {
+            selectedTopicButton.classList.remove("bg-blue-600", "ring-2", "ring-blue-400");
+            selectedTopicButton.classList.add("bg-gray-700");
+        }
+        
         const response = await fetch("/api/select_topic", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -16,10 +46,21 @@ async function selectTopic(topic) {
         });
         const data = await response.json();
 
+        // Find and highlight the selected button
+        const buttons = document.querySelectorAll('[data-topic]');
+        buttons.forEach(btn => {
+            if (btn.getAttribute("data-topic") === topic) {
+                btn.classList.remove("bg-gray-700");
+                btn.classList.add("bg-blue-600", "ring-2", "ring-blue-400");
+                selectedTopicButton = btn;
+            }
+        });
+
         addMessage(data.message || `Let's talk about ${topic}. What would you like to know?`, false);
 
         // Set topic selected state to enable query mode
         topicSelected = true;
+        currentSelectedTopic = topic;
     } catch (error) {
         console.error("Error selecting topic:", error);
         addMessage(`Error selecting topic: ${topic}`, false);
@@ -54,6 +95,8 @@ async function sendMessage() {
         // Determine if chit-chat or query mode based on topic selection
         const endpoint = topicSelected ? "/api/retrieve_and_summarize" : "/api/chat";
         const bodyData = topicSelected ? { "query": userMessage } : { "user_message": userMessage };
+        
+        console.log("Mode:", topicSelected ? "Query" : "Chit-Chat", "Endpoint:", endpoint);
 
         const response = await fetch(endpoint, {
             method: "POST",
@@ -231,6 +274,13 @@ document.addEventListener("DOMContentLoaded", function() {
         checkModelStatus();
         window.modelStatusChecked = true;
     }
+    
+    // Initialize chit-chat mode on startup
+    topicSelected = false;
+    
+    // Show welcome message for chit-chat mode
+    addMessage("Hello! I'm an Information Retrieval (IR) Chatbot powered by AI. I can help you in two ways:\n\n💬 Chit-Chat Mode (current): Have a casual conversation with me about anything!\n\n🔍 Query Mode: Select a topic from the sidebar (Health, Technology, Sports, etc.) and ask me specific questions. I'll search through Wikipedia articles, retrieve relevant documents, and provide AI-generated summaries.\n\nTry asking me something, or select a topic to get started!", false);
+    
     // Generate buttons dynamically for each topic
     const topicsContainer = document.getElementById("topics-container");
     if (topicsContainer) {
@@ -286,7 +336,7 @@ document.addEventListener("DOMContentLoaded", function() {
             data: {
                 labels: [],
                 datasets: [{
-                    label: "Response Time (ms)",
+                    label: "Response Time (s)",
                     data: [],
                     borderColor: "rgb(75, 192, 192)",
                     backgroundColor: "rgba(75, 192, 192, 0.2)",

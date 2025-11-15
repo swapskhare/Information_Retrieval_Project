@@ -63,6 +63,82 @@ chit_chat_mode = {"active": True}
 ps = PorterStemmer()
 
 
+def determine_query_complexity(query):
+    """
+    Determine query complexity and return number of documents to retrieve (1-5).
+    
+    Factors considered:
+    - Query length (number of words)
+    - Number of unique terms after preprocessing
+    - Presence of question words
+    - Query length in characters
+    """
+    # Preprocess to get terms
+    terms = preprocess_text(query)
+    num_terms = len(terms)
+    num_unique_terms = len(set(terms))
+    
+    # Query characteristics
+    query_lower = query.lower()
+    question_words = ['what', 'how', 'why', 'when', 'where', 'who', 'which', 'explain', 'describe', 'compare', 'difference']
+    has_question_word = any(word in query_lower for word in question_words)
+    
+    # Calculate complexity score (0-100)
+    complexity_score = 0
+    
+    # Word count factor (0-30 points)
+    if num_terms <= 1:
+        complexity_score += 5
+    elif num_terms <= 2:
+        complexity_score += 15
+    elif num_terms <= 4:
+        complexity_score += 25
+    else:
+        complexity_score += 30
+    
+    # Unique terms factor (0-25 points)
+    if num_unique_terms <= 1:
+        complexity_score += 5
+    elif num_unique_terms <= 2:
+        complexity_score += 15
+    elif num_unique_terms <= 3:
+        complexity_score += 20
+    else:
+        complexity_score += 25
+    
+    # Query length factor (0-25 points)
+    char_count = len(query)
+    if char_count <= 10:
+        complexity_score += 5
+    elif char_count <= 20:
+        complexity_score += 15
+    elif char_count <= 40:
+        complexity_score += 22
+    else:
+        complexity_score += 25
+    
+    # Question word factor (0-20 points)
+    if has_question_word:
+        complexity_score += 20
+    
+    # Map complexity score to number of documents (1-5)
+    # Simple queries (0-30): 1-2 docs
+    # Medium queries (31-60): 2-3 docs
+    # Complex queries (61-100): 3-5 docs
+    if complexity_score <= 20:
+        num_docs = 1
+    elif complexity_score <= 40:
+        num_docs = 2
+    elif complexity_score <= 60:
+        num_docs = 3
+    elif complexity_score <= 80:
+        num_docs = 4
+    else:
+        num_docs = 5
+    
+    return min(num_docs, 5)  # Ensure max of 5
+
+
 def preprocess_text(text):
     """
     Preprocess the query text.
@@ -187,22 +263,19 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
-    # If chit-chat mode is active, respond using BlenderBot
-    if chit_chat_mode["active"]:
-        if blenderbot_tokenizer is None or blenderbot_model is None:
-            raise HTTPException(status_code=503, detail="Models are still loading. Please wait.")
+    # Chit-chat mode is active when no topic is selected
+    # Use BlenderBot for general conversation
+    if blenderbot_tokenizer is None or blenderbot_model is None:
+        raise HTTPException(status_code=503, detail="Models are still loading. Please wait.")
 
-        inputs = blenderbot_tokenizer(request.user_message, return_tensors="pt")
-        # Move inputs to the same device as the model
-        if device >= 0:
-            inputs = {k: v.to(f"cuda:{device}") for k, v in inputs.items()}
-        # If CPU, inputs stay on CPU (default)
-        reply_ids = blenderbot_model.generate(**inputs)
-        bot_response = blenderbot_tokenizer.decode(reply_ids[0], skip_special_tokens=True)
-        return {"response": bot_response}
-    else:
-        # If chit-chat mode is disabled, prompt user to select a topic
-        return {"response": "Please select a topic to continue."}
+    inputs = blenderbot_tokenizer(request.user_message, return_tensors="pt")
+    # Move inputs to the same device as the model
+    if device >= 0:
+        inputs = {k: v.to(f"cuda:{device}") for k, v in inputs.items()}
+    # If CPU, inputs stay on CPU (default)
+    reply_ids = blenderbot_model.generate(**inputs)
+    bot_response = blenderbot_tokenizer.decode(reply_ids[0], skip_special_tokens=True)
+    return {"response": bot_response}
 
 
 class TopicRequest(BaseModel):
@@ -211,11 +284,18 @@ class TopicRequest(BaseModel):
 
 @app.post("/api/select_topic")
 async def select_topic(request: TopicRequest):
-    # Set the selected topic and disable chit-chat mode
+    # Set the selected topic (chit-chat mode is determined by whether topic is None)
     selected_topic["topic"] = request.topic
-    chit_chat_mode["active"] = False
     print(f"Topic selected: {request.topic}")
     return {"message": f"Topic '{request.topic}' selected"}
+
+
+@app.post("/api/deselect_topic")
+async def deselect_topic():
+    # Deselect topic to return to chit-chat mode
+    selected_topic["topic"] = None
+    print("Topic deselected - returning to chit-chat mode")
+    return {"message": "Returned to chit-chat mode"}
 
 
 class QueryRequest(BaseModel):
@@ -227,11 +307,8 @@ async def retrieve_and_summarize(request: QueryRequest):
     if postings_list is None or summarizer is None:
         raise HTTPException(status_code=503, detail="Models are still loading. Please wait.")
 
-    if chit_chat_mode["active"]:
-        raise HTTPException(status_code=400, detail="Please select a topic before querying.")
-
     topic = selected_topic["topic"]
-    if not topic:
+    if topic is None:
         raise HTTPException(status_code=400, detail="No topic selected.")
 
     # Retrieve relevant documents (get more candidates to ensure we find topic matches)
@@ -250,13 +327,17 @@ async def retrieve_and_summarize(request: QueryRequest):
 
     print(f"🎯 Found {len(topic_filtered_ids)} documents matching topic '{topic}'")
 
-    # Take top 3 from topic-filtered results
-    topic_filtered_ids = topic_filtered_ids[:3]
+    # Determine number of documents to retrieve based on query complexity
+    num_docs_to_retrieve = determine_query_complexity(query)
+    print(f"🧠 Query complexity analysis: retrieving {num_docs_to_retrieve} document(s)")
+    
+    # Take top N from topic-filtered results (based on complexity, max 5)
+    topic_filtered_ids = topic_filtered_ids[:num_docs_to_retrieve]
     print(f"📝 Processing top {len(topic_filtered_ids)} documents")
 
     if not topic_filtered_ids:
         end_time = time.time()  # Measure end time for no summaries
-        response_time = (end_time - start_time) * 1000  # Calculate response time in milliseconds
+        response_time = end_time - start_time  # Calculate response time in seconds
         result = {
             "summary": f"No relevant documents found for the query that match the selected topic '{topic}'."
         }
@@ -268,7 +349,8 @@ async def retrieve_and_summarize(request: QueryRequest):
     # Generate summaries for relevant documents
     processed_doc_ids = set()
     top_summaries = []
-    max_total_summary_length = 500  # Maximum total words across all summaries
+    # Dynamic summary length based on number of documents (more docs = longer summary)
+    max_total_summary_length = 150 * num_docs_to_retrieve  # 150 words per document, max 750 for 5 docs
 
     for doc_id in set(topic_filtered_ids):
         if doc_id in processed_doc_ids:
@@ -304,7 +386,7 @@ async def retrieve_and_summarize(request: QueryRequest):
 
     if not top_summaries:
         end_time = time.time()  # Measure end time for no summaries
-        response_time = (end_time - start_time) * 1000  # Calculate response time in milliseconds
+        response_time = end_time - start_time  # Calculate response time in seconds
         result = {"summary": "No relevant content found for the query."}
         save_query_to_json(query, result["summary"], response_time, topic)  # Save the result
         return result
@@ -320,11 +402,11 @@ async def retrieve_and_summarize(request: QueryRequest):
 
     # Measure response time
     end_time = time.time()
-    response_time = (end_time - start_time) * 1000
+    response_time = end_time - start_time  # Calculate response time in seconds
     result = {
         "summary": summary,
         "response_time": response_time,
-        "docs_retrieved_count": len(topic_filtered_ids),
+        "docs_retrieved_count": int(len(topic_filtered_ids)),  # Ensure integer
         "topic": topic,
     }
 
