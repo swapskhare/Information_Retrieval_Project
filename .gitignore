@@ -38,12 +38,22 @@ InfoRet_env/
 .DS_Store
 Thumbs.db
 
-# Project specific
-intermediate_p3/
-*.pkl
-*.zip
-all_topics_wikipedia_data_p3.zip
+# Environment
+.env
+.env.local
 
-# Large data files (optional - uncomment if you don't want to track these)
-# data/all_topics_wikipedia_data.json
-# data/postings_list.pkl
+# Logs
+*.log
+logs/
+
+# Data files - TRACKED in repository
+# Scraped data and generated indexes are part of the repository
+# (data/*.json and data/*.pkl are NOT ignored)
+
+# Large generated files - ignore these
+data/postings_list.json
+
+# Only ignore intermediate/backup data files
+data/intermediate_p3/
+temp_extract/
+intermediate_p3/

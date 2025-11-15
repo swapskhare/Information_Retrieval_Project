@@ -88,5 +88,35 @@
         "result": "No relevant documents found for the query that match the selected topic 'Sports'.",
         "response_time": 112.68281936645508,
         "topic": "Sports"
+    },
+    "solar energy": {
+        "result": "No relevant content found for the query.",
+        "response_time": 0.4169940948486328,
+        "topic": "Environment"
+    },
+    "covid": {
+        "result": "Manitoba Health is responsible for leading the development of policy and publicly administered health system planning in the province of Manitoba. It also oversees funding, performance requirements, oversight, and accountability within the system; promoting prevention and positive health practices. The department operates under the Minister of Health, who has been Uzoma Asagwara as of October 2023[update] In 2020, Nigeria recorded the highest number of cases of COVID-19 in Africa. Life expectancy at birth in Nigeria increased from 49.4 years in 2007 to approximately 54 years in 2017. The maternal mortality rate in Nigeria is over 800 per 100,000 live births. The country has restrictive abortion laws, limiting access to safe procedures. The 2018 Nigeria HIV/AIDS Indicator and Impact Survey revealed that the national HIV prevalence rate among adults aged 15\u201349 is 1.4%. Akwa Ibom State has the highest prevalence at 5.6%, followed by Benue State (4.9%) and Rivers State (3.8%). In contrast, Jigawa State and Katsina State have the lowest prevalence at 0.3%. The epidemic is primarily driven by high-risk behaviors such as multiple sexual partnerships, Nigeria has one of the highest burdens of neglected tropical diseases in Africa. The pandemic exacerbated existing health issues, putting a strain on the country's already limited resources. The epidemiology... Island Health provides health care to over 900,000 people over a geographic area of 56,000 square kilometres (22,000 sq mi) The region includes the communities of Greater Victoria, Nanaimo, Courtenay, Campbell River, Duncan, and Port Alberni. Island Health's 150 hospitals and health centres include.",
+        "response_time": 10427.241325378418,
+        "topic": "Health"
+    },
+    "software": {
+        "result": "No relevant content found for the query.",
+        "response_time": 0.22149085998535156,
+        "topic": "Technology"
+    },
+    "covid19": {
+        "result": "No relevant documents found for the query that match the selected topic 'Health'.",
+        "response_time": 0.05507469177246094,
+        "topic": "Health"
+    },
+    "economy": {
+        "result": "No relevant content found for the query.",
+        "response_time": 1.066446304321289,
+        "topic": "Economy"
+    },
+    "pfizer": {
+        "result": "The Kano trovafloxacin trial litigation arose out of a clinical trial conducted by Pfizer in 1996 in Kano, Nigeria, during an epidemic of meningococcal meningitis. Pfizer gave the children a substantially reduced dose of the ceftriaxone (specifically, 33 mg/kg) relative to that described on the US FDA-approved prescribing information. The allegation is that this was done to skew the test in favor of its own drug In 1996, epidemics of bacterial meningitis, measles and cholera besieged the impoverished Nigerian city of Kano. Pfizer dispatched a medical team to establish a treatment center at Kano's Infectious Disease Hospital (IDH) Plaintiffs allege that while MSF and other organizations offered safe and effective treatments, Pfizer embarked on a medical experiment involving the \"new, untested and unproven\" antibiotic \"Trovan\" MSF established their headquarters in tents beside the IDH due to space constraints. There, MSF admitted their sickest patients to hospital beds and confined the... Zoetis Inc. is the world's largest producer of medicine and vaccinations for pets and livestock. The company was a subsidiary of Pfizer, but with Pfizer's spinoff of its 83% interest in the firm it is now a completely independent company. Zoetis' IPO on February 1, 2013 sold 86.1 million shares for US$ 2.2 billion. The animal health industry worldwide is an estimated US$22 billion industry. Pfizer retained 414 million Class B shares giving it an 83% controlling stake in the firm. At the time, it was the largest IPO from a U.S. company since Facebook's $16 billion IPO on May 18, 2012. In November 2015, the company announced it would acquire a developer of aquaculture treatments and diseases, Pharmaq, for $765 million. In 2017, Zoetis acquired Ireland-based Nexvet, a company with a biologics The Pfizer\u2013BioNTech COVID-19 vaccine is given by intramuscular injection. It is composed of nucleoside-modified mRNA that encodes a mutated form of the full-length spike protein of SARS-CoV-2. Most side effects are mild to moderate in severity and resolve within a few days. Reports of serious side effects, such as allergic reactions, remain very rare. Vaccine is supplied in a multidose vial as \"a white to off-white, sterile, preservative-free, frozen suspension for intramuscular injection\" It must be thawed to room temperature and diluted with normal saline before administration. The initial course consists of two doses. WHO recommends an interval of three to four weeks between doses. Preliminary data indicated that a third dose of the vaccine would provide a similar level of neutralizing antibodies against the Omicron variant as seen after two doses against other variants. Protection against hospital admission is maintained for all ages and groups with comorbidities. The U.S....",
+        "response_time": 35562.00289726257,
+        "topic": "Health"
     }
 }

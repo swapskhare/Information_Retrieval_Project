@@ -15,5 +15,9 @@ wikipedia==1.4.0
 # Natural Language Processing
 nltk==3.8.1
 
+# Code Quality
+black==23.12.1
+pylint==3.0.3
+
 # Compatibility
 numpy<2.0
