@@ -1,0 +1,33 @@
+[MASTER]
+# Minimal pylint configuration
+ignore=venv,notebooks,__pycache__
+jobs=0
+
+[MESSAGES CONTROL]
+# Disable some checks for minimal setup
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    import-error,
+    no-member
+
+[FORMAT]
+max-line-length=100
+
+[BASIC]
+# Good variable names
+good-names=i,j,k,ex,Run,_,id,doc_id,doc,url,plist,curr,prev,next,idx
+
+[DESIGN]
+max-args=10
+max-locals=20
+max-returns=10
+max-branches=15
+max-statements=60
+

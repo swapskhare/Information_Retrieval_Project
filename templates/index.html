@@ -14,17 +14,53 @@
             border: 4px solid rgba(255, 255, 255, 0.2);
             border-top: 4px solid #ffffff;
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
+            width: 60px;
+            height: 60px;
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+        }
+        .loading-overlay.hidden {
+            display: none;
+        }
+        .loading-text {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: 500;
+        }
+        .analytics-section {
+            margin-bottom: 0.3rem;
+        }
+        .analytics-section:last-child {
+            margin-bottom: 0;
+        }
+        .analytics-chart {
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white font-sans h-screen overflow-hidden">
+    <!-- Loading Overlay - Visible by default until models are loaded -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: flex;">
+        <div class="spinner"></div>
+        <div id="loadingText" class="loading-text">Loading models...</div>
+    </div>
 
     <!-- Main Flex Container -->
     <div class="flex h-full">
@@ -47,21 +83,44 @@
                 <input type="text" id="userInput" 
                        class="flex-1 p-2 rounded-l bg-gray-700 border border-gray-600 
                               focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                       placeholder="Type a message..." 
-                       onkeypress="checkEnter(event)">
-                <button onclick="sendMessage()" 
+                       placeholder="Type a message...">
+                <button id="sendButton" 
                         class="bg-blue-600 p-2 rounded-r hover:bg-blue-500">Send</button>
             </div>
-            <!-- Loading Spinner -->
-            <div id="loadingSpinner" class="hidden mt-2 flex justify-center">
-                <div class="spinner"></div>
+        </div>
+        
+        <!-- Right Sidebar (Visualizations) -->
+        <div class="w-1/4 bg-gray-800 p-4 flex flex-col border-l border-gray-700 overflow-y-auto">
+            <h2 class="text-lg font-semibold mb-3">Analytics</h2>
+            <div>
+                <div class="space-y-2 analytics-section">
+                    <h3 class="text-sm font-semibold mb-2 text-gray-300">Response Time</h3>
+                    <canvas id="responseTimeChart" class="bg-gray-900 rounded p-2 analytics-chart"></canvas>
+                </div>
+                <div class="space-y-2 analytics-section">
+                    <h3 class="text-sm font-semibold mb-2 text-gray-300">Documents Retrieved</h3>
+                    <canvas id="docsRetrievedChart" class="bg-gray-900 rounded p-2 analytics-chart"></canvas>
+                </div>
+                <div class="space-y-2 analytics-section">
+                    <h3 class="text-sm font-semibold mb-2 text-gray-300">Topic Popularity</h3>
+                    <canvas id="topicPopularityChart" class="bg-gray-900 rounded p-2"></canvas>
+                </div>
             </div>
         </div>
 
 
     <!-- Include JavaScript -->
     <script src="/static/script.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        // Ensure overlay is visible immediately and start status checking
+        (function() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+                overlay.classList.remove('hidden');
+            }
+        })();
+    </script>
 
 </body>
 </html>
