@@ -53,6 +53,9 @@ logs/
 # Large generated files - ignore these
 data/postings_list.json
 
+# Runtime data files - ignore these
+data/results.json
+
 # Only ignore intermediate/backup data files
 data/intermediate_p3/
 temp_extract/
