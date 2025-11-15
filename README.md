@@ -483,16 +483,6 @@ cp .env.example .env
 3. **Ask topic-specific questions** - Get AI-powered summaries
 4. **Check query history** - View `data/results.json` for all queries and responses
 
-## 🔮 Future Enhancements
-
-- [ ] Docker containerization
-- [ ] Query expansion and relevance feedback
-- [ ] BM25 ranking alternative
-- [ ] Caching for frequently accessed documents
-- [ ] User authentication
-- [ ] Query history and favorites
-- [ ] Enhanced visualization dashboards
-
 ## 📝 License
 
 This project is for educational purposes. Please respect Wikipedia's terms of use and rate limits.
@@ -502,5 +492,3 @@ This project is for educational purposes. Please respect Wikipedia's terms of us
 Developed as part of an Information Retrieval course project.
 
 ---
-
-**Built with ❤️ using FastAPI, Transformers, and NLTK**
