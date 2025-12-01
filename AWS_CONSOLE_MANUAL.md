@@ -219,6 +219,11 @@ Before starting, ensure you have:
      - **Name**: `AWS_DEFAULT_REGION`
      - **Value**: `<your-region>` (e.g., `us-east-1`)
      - **Type**: Plaintext
+   - (Optional) Click **Add environment variable** again:
+     - **Name**: `ARTICLES_PER_TOPIC`
+     - **Value**: Number of articles to download per topic (default: `6000`)
+     - **Type**: Plaintext
+     - **Note**: This overrides the default in buildspec.yml. Lower values (e.g., `1000`) will scrape faster but result in fewer documents.
 
 10. **Click Create build project**
 

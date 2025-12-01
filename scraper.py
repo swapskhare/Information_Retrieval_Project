@@ -247,7 +247,8 @@ def main():
     print("=" * 70)
 
     num_topics = len(topics)
-    target_count = 6000
+    # Get target count from environment variable, default to 600
+    target_count = int(os.getenv("ARTICLES_PER_TOPIC", "600"))
     max_workers = min(multiprocessing.cpu_count(), num_topics)
 
     print(f"\n📊 Configuration:")

@@ -1,88 +1,99 @@
-version: "0.2"
+version: 0.2
 
 # Buildspec for CodeBuild project to generate data files and upload to S3
 env:
   variables:
     # S3 bucket name - set in CodeBuild project environment variables
-    # S3_BUCKET: "ir-chatbot-data-123456789"
-    S3_DATA_PREFIX: "data/"
+    # S3_BUCKET: ir-chatbot-data-123456789
+    S3_DATA_PREFIX: data/
     PYTHONUNBUFFERED: "1"
+    # Number of articles to download per topic (default: 600)
+    # Can be overridden in CodeBuild project environment variables
+    ARTICLES_PER_TOPIC: "600"
 
 phases:
   install:
     runtime-versions:
       python: 3.11
     commands:
-      - "echo '🚀 Starting data pipeline build...'"
-      - "echo 'Python version:'"
-      - "python --version"
-      - "echo 'Installing system dependencies...'"
-      - "apt-get update -y"
-      - "apt-get install -y curl"
-      - "echo 'Upgrading pip...'"
-      - "pip install --upgrade pip setuptools wheel"
-      - "echo 'Installing Python dependencies...'"
-      - "pip install -r requirements.txt"
-      - "echo 'Downloading NLTK stopwords...'"
-      - "python -m nltk.downloader stopwords"
+      - echo "Starting data pipeline build..."
+      - echo "Python version:"
+      - python --version
+      - echo "Installing system dependencies..."
+      - apt-get update -y
+      - apt-get install -y curl
+      - echo "Upgrading pip..."
+      - pip install --upgrade pip setuptools wheel
+      - echo "Installing Python dependencies..."
+      - pip install -r requirements.txt
+      - echo "Downloading NLTK stopwords..."
+      - python -m nltk.downloader stopwords
 
   pre_build:
     commands:
-      - "echo '📁 Creating data directory...'"
-      - "mkdir -p data"
-      - "echo '✅ Data directory created'"
-      - "if [ -z \"$S3_BUCKET\" ]; then echo '❌ ERROR: S3_BUCKET environment variable is not set'; echo 'Please configure S3_BUCKET in CodeBuild project environment variables'; exit 1; fi"
-      - "echo \"S3 Bucket: $S3_BUCKET\""
-      - "echo \"S3 Data Prefix: $S3_DATA_PREFIX\""
+      - echo "Creating data directory..."
+      - mkdir -p data
+      - echo "Data directory created"
+      - |
+        if [ -z "$S3_BUCKET" ]; then
+          echo "ERROR: S3_BUCKET environment variable is not set"
+          echo "Please configure S3_BUCKET in CodeBuild project environment variables"
+          exit 1
+        fi
+      - echo "S3 Bucket: $S3_BUCKET"
+      - echo "S3 Data Prefix: $S3_DATA_PREFIX"
+      - echo "Articles per topic: $ARTICLES_PER_TOPIC"
 
   build:
     commands:
-      - "echo '='"
-      - "echo '📊 Phase 1: Running Wikipedia Scraper'"
-      - "echo '='"
-      - "echo 'This may take 6-12 hours depending on connection speed...'"
-      - "python scraper.py"
-      - "if [ ! -f 'data/all_topics_wikipedia_data.json' ]; then echo '❌ ERROR: scraper.py failed to create all_topics_wikipedia_data.json'; exit 1; fi"
-      - "echo '✅ Scraper completed successfully'"
-      - "echo ''"
-      - "echo '='"
-      - "echo '📊 Phase 2: Building Inverted Index'"
-      - "echo '='"
-      - "python indexer.py"
-      - "if [ ! -f 'data/postings_list.json' ]; then echo '❌ ERROR: indexer.py failed to create postings_list.json'; exit 1; fi"
-      - "echo '✅ Indexer completed successfully'"
-      - "echo ''"
-      - "echo '='"
-      - "echo '📊 Phase 3: Creating Document Mapping'"
-      - "echo '='"
-      - "python doc_mapper.py"
-      - "if [ ! -f 'data/doc_id_to_url.json' ]; then echo '❌ ERROR: doc_mapper.py failed to create doc_id_to_url.json'; exit 1; fi"
-      - "echo '✅ Document mapper completed successfully'"
-      - "echo ''"
-      - "echo '📦 Verifying generated files...'"
-      - "ls -lh data/*.json || true"
-      - "echo '✅ All data files generated successfully'"
+      - echo "========================================"
+      - echo "Phase 1: Running Wikipedia Scraper"
+      - echo "========================================"
+      - echo "Configuring scraper: $ARTICLES_PER_TOPIC articles per topic"
+      - echo "This may take several hours depending on connection speed..."
+      - python scraper.py
+      - |
+        if [ ! -f "data/all_topics_wikipedia_data.json" ]; then
+          echo "ERROR: scraper.py failed to create all_topics_wikipedia_data.json"
+          exit 1
+        fi
+      - echo "Scraper completed successfully"
+      - echo "========================================"
+      - echo "Phase 2: Building Inverted Index"
+      - echo "========================================"
+      - python indexer.py
+      - |
+        if [ ! -f "data/postings_list.json" ]; then
+          echo "ERROR: indexer.py failed to create postings_list.json"
+          exit 1
+        fi
+      - echo "Indexer completed successfully"
+      - echo "========================================"
+      - echo "Phase 3: Creating Document Mapping"
+      - echo "========================================"
+      - python doc_mapper.py
+      - |
+        if [ ! -f "data/doc_id_to_url.json" ]; then
+          echo "ERROR: doc_mapper.py failed to create doc_id_to_url.json"
+          exit 1
+        fi
+      - echo "Document mapper completed successfully"
+      - echo "Verifying generated files..."
+      - ls -lh data/*.json || true
+      - echo "All data files generated successfully"
 
   post_build:
     commands:
-      - "echo '='"
-      - "echo '☁️  Phase 4: Uploading Files to S3'"
-      - "echo '='"
-      - "echo \"Uploading data files to s3://$S3_BUCKET/$S3_DATA_PREFIX\""
-      - "aws s3 cp data/all_topics_wikipedia_data.json \"s3://$S3_BUCKET/${S3_DATA_PREFIX}all_topics_wikipedia_data.json\""
-      - "aws s3 cp data/postings_list.json \"s3://$S3_BUCKET/${S3_DATA_PREFIX}postings_list.json\""
-      - "aws s3 cp data/doc_id_to_url.json \"s3://$S3_BUCKET/${S3_DATA_PREFIX}doc_id_to_url.json\""
-      - "echo '✅ All files uploaded to S3 successfully'"
-      - "echo ''"
-      - "echo '📋 Summary:'"
-      - "echo \"  - all_topics_wikipedia_data.json → s3://$S3_BUCKET/${S3_DATA_PREFIX}all_topics_wikipedia_data.json\""
-      - "echo \"  - postings_list.json → s3://$S3_BUCKET/${S3_DATA_PREFIX}postings_list.json\""
-      - "echo \"  - doc_id_to_url.json → s3://$S3_BUCKET/${S3_DATA_PREFIX}doc_id_to_url.json\""
-      - "echo ''"
-      - "echo '🎉 Data pipeline completed successfully!'"
-
-# Uncomment and configure if you want CodeBuild to push logs to CloudWatch
-# logs:
-#   cloudwatch-logs:
-#     group-name: "/aws/codebuild/ir-chatbot-data-pipeline"
-#     stream-name: "build-log"
+      - echo "========================================"
+      - echo "Phase 4: Uploading Files to S3"
+      - echo "========================================"
+      - echo "Uploading data files to s3://$S3_BUCKET/$S3_DATA_PREFIX"
+      - aws s3 cp data/all_topics_wikipedia_data.json s3://$S3_BUCKET/${S3_DATA_PREFIX}all_topics_wikipedia_data.json
+      - aws s3 cp data/postings_list.json s3://$S3_BUCKET/${S3_DATA_PREFIX}postings_list.json
+      - aws s3 cp data/doc_id_to_url.json s3://$S3_BUCKET/${S3_DATA_PREFIX}doc_id_to_url.json
+      - echo "All files uploaded to S3 successfully"
+      - echo "Summary:"
+      - echo "  - all_topics_wikipedia_data.json uploaded to S3"
+      - echo "  - postings_list.json uploaded to S3"
+      - echo "  - doc_id_to_url.json uploaded to S3"
+      - echo "Data pipeline completed successfully!"
