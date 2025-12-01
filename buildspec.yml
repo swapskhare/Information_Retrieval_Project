@@ -34,12 +34,7 @@ phases:
       - echo "Creating data directory..."
       - mkdir -p data
       - echo "Data directory created"
-      - |
-        if [ -z "$S3_BUCKET" ]; then
-          echo "ERROR: S3_BUCKET environment variable is not set"
-          echo "Please configure S3_BUCKET in CodeBuild project environment variables"
-          exit 1
-        fi
+      - if [ -z "$S3_BUCKET" ]; then echo "ERROR: S3_BUCKET environment variable is not set"; echo "Please configure S3_BUCKET in CodeBuild project environment variables"; exit 1; fi
       - echo "S3 Bucket: $S3_BUCKET"
       - echo "S3 Data Prefix: $S3_DATA_PREFIX"
 
@@ -50,31 +45,19 @@ phases:
       - echo "=========================================="
       - echo "This may take 6-12 hours depending on connection speed..."
       - python scraper.py
-      - |
-        if [ ! -f "data/all_topics_wikipedia_data.json" ]; then
-          echo "ERROR: scraper.py failed to create all_topics_wikipedia_data.json"
-          exit 1
-        fi
+      - if [ ! -f "data/all_topics_wikipedia_data.json" ]; then echo "ERROR: scraper.py failed to create all_topics_wikipedia_data.json"; exit 1; fi
       - echo "Scraper completed successfully"
       - echo "=========================================="
       - echo "Phase 2: Building Inverted Index"
       - echo "=========================================="
       - python indexer.py
-      - |
-        if [ ! -f "data/postings_list.json" ]; then
-          echo "ERROR: indexer.py failed to create postings_list.json"
-          exit 1
-        fi
+      - if [ ! -f "data/postings_list.json" ]; then echo "ERROR: indexer.py failed to create postings_list.json"; exit 1; fi
       - echo "Indexer completed successfully"
       - echo "=========================================="
       - echo "Phase 3: Creating Document Mapping"
       - echo "=========================================="
       - python doc_mapper.py
-      - |
-        if [ ! -f "data/doc_id_to_url.json" ]; then
-          echo "ERROR: doc_mapper.py failed to create doc_id_to_url.json"
-          exit 1
-        fi
+      - if [ ! -f "data/doc_id_to_url.json" ]; then echo "ERROR: doc_mapper.py failed to create doc_id_to_url.json"; exit 1; fi
       - echo "Document mapper completed successfully"
       - echo "Verifying generated files..."
       - ls -lh data/*.json
