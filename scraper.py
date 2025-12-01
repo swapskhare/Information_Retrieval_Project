@@ -1,3 +1,4 @@
+import warnings
 import wikipedia
 import json
 import time
@@ -12,6 +13,10 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
 from multiprocessing import Manager, Value, Lock as MP_Lock
 import multiprocessing
+
+# Suppress BeautifulSoup parser warning from wikipedia library
+warnings.filterwarnings("ignore", message=".*No parser was explicitly specified.*")
+warnings.filterwarnings("ignore", message=".*GuessedAtParserWarning.*")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -209,8 +214,6 @@ def extract_from_zip(zip_path, output_path):
             # Copy/rename to final location
             shutil.copy2(source_path, output_path)
 
-            import os
-
             file_size = os.path.getsize(output_path) / (1024 * 1024)  # Size in MB
             print(f"✅ Successfully extracted and saved to {output_path} ({file_size:.2f} MB)")
 
@@ -230,16 +233,22 @@ def main():
     zip_path = "data/scraped_data.zip"
     output_path = "data/all_topics_wikipedia_data.json"
 
-    # First, try to extract from zip file
-    if os.path.exists(zip_path):
-        print(f"📦 Checking for {zip_path}...")
-        if extract_from_zip(zip_path, output_path):
-            print("✅ Data extracted from zip file. Skipping internet scraping.")
-            return
+    # Skip zip extraction in CodeBuild - only extract locally
+    is_codebuild = os.getenv("CODEBUILD_BUILD_ID") is not None
+    
+    # Only try to extract from zip file when running locally (not in CodeBuild)
+    if not is_codebuild:
+        if os.path.exists(zip_path):
+            print(f"📦 Checking for {zip_path}...")
+            if extract_from_zip(zip_path, output_path):
+                print("✅ Data extracted from zip file. Skipping internet scraping.")
+                return
+            else:
+                print(f"⚠️  Failed to extract from {zip_path}, falling back to internet scraping...")
         else:
-            print(f"⚠️  Failed to extract from {zip_path}, falling back to internet scraping...")
+            print(f"📡 {zip_path} not found, proceeding with internet scraping...")
     else:
-        print(f"📡 {zip_path} not found, proceeding with internet scraping...")
+        print("🔨 Running in CodeBuild - skipping zip extraction, proceeding with internet scraping...")
 
     # If zip extraction failed or zip doesn't exist, proceed with scraping
     print("\n" + "=" * 70)
