@@ -90,27 +90,38 @@ async def fetch_wikipedia_search(session: aiohttp.ClientSession, query: str, lim
 async def fetch_wikipedia_page(session: aiohttp.ClientSession, title: str, semaphore: asyncio.Semaphore) -> Optional[Dict]:
     """Fetch a Wikipedia page with extract, URL, and revision ID."""
     async with semaphore:  # Rate limiting
+        # Small delay to avoid overwhelming the API
+        await asyncio.sleep(random.uniform(0.05, 0.15))
         try:
             # URL encode the title
             encoded_title = quote(title.replace(" ", "_"))
             
             params = {
                 "action": "query",
-                "prop": "extracts|info",
+                "prop": "extracts|info|revisions",
                 "titles": title,
-                "exintro": True,  # Get only intro section
-                "explaintext": True,  # Plain text, no HTML
-                "inprop": "url|revision",
+                "exintro": "1",  # Get only intro section
+                "explaintext": "1",  # Plain text, no HTML
+                "inprop": "url",
+                "rvprop": "ids",
+                "rvlimit": 1,
                 "format": "json",
             }
             
             async with session.get(WIKIPEDIA_API_URL, params=params) as response:
                 if response.status != 200:
+                    logging.debug(f"API returned status {response.status} for page: {title}")
                     return None
                 
                 data = await response.json()
                 
+                # Check for API errors
+                if "error" in data:
+                    logging.warning(f"API error for '{title}': {data.get('error', {}).get('info', 'Unknown error')}")
+                    return None
+                
                 if "query" not in data or "pages" not in data["query"]:
+                    logging.debug(f"No query/pages in API response for: {title}")
                     return None
                 
                 pages = data["query"]["pages"]
@@ -121,18 +132,34 @@ async def fetch_wikipedia_page(session: aiohttp.ClientSession, title: str, semap
                 
                 page_data = pages[page_id]
                 
-                # Check for disambiguation or redirect
+                # Check for missing or invalid pages
                 if "missing" in page_data or "invalid" in page_data:
                     return None
                 
+                # Handle redirects - get the actual page title
+                final_title = page_data.get("title", title)
+                if "redirect" in page_data.get("pageprops", {}):
+                    # This is a redirect, skip it
+                    return None
+                
                 extract = page_data.get("extract", "")
-                if not extract or len(extract) < 200:
+                
+                # If no extract, try without exintro to get full text (but limit length)
+                if not extract or len(extract.strip()) == 0:
+                    logging.debug(f"No extract returned for page: {final_title}")
+                    return None
+                
+                # Clean up extract (remove extra whitespace)
+                extract = extract.strip()
+                
+                if len(extract) < 200:
+                    logging.debug(f"Extract too short ({len(extract)} chars) for page: {final_title}")
                     return None
                 
                 # Get URL and revision ID
                 canonical_url = page_data.get("canonicalurl", "")
                 revision_id = None
-                if "revisions" in page_data and page_data["revisions"]:
+                if "revisions" in page_data and len(page_data["revisions"]) > 0:
                     revision_id = page_data["revisions"][0].get("revid")
                 
                 return {
@@ -144,6 +171,9 @@ async def fetch_wikipedia_page(session: aiohttp.ClientSession, title: str, semap
         
         except asyncio.TimeoutError:
             logging.warning(f"Timeout fetching page: {title}")
+            return None
+        except aiohttp.ClientError as e:
+            logging.debug(f"HTTP error fetching page '{title}': {e}")
             return None
         except Exception as e:
             logging.debug(f"Error fetching page '{title}': {e}")
@@ -214,17 +244,36 @@ async def process_topic(
     article_counter = 0
     total_attempted = 0
     
+    # Initial progress update
+    async with progress_lock:
+        progress_dict[topic] = {
+            "collected": 0,
+            "target": target_count,
+            "attempted": 0,
+        }
+    
     # Process articles with concurrency
     pending_tasks = []
     
     while len(collected_articles) < target_count and (search_queue or pending_tasks):
         # Start new fetch tasks if we have room and queue items
+        tasks_started = 0
         while len(pending_tasks) < 50 and search_queue and len(collected_articles) < target_count:
             current_title = search_queue.pop(0)
             if current_title not in local_visited_titles:
                 task = asyncio.create_task(fetch_wikipedia_page(session, current_title, semaphore))
                 pending_tasks.append((task, current_title))
                 total_attempted += 1
+                tasks_started += 1
+        
+        # Update progress when we start new tasks
+        if tasks_started > 0:
+            async with progress_lock:
+                progress_dict[topic] = {
+                    "collected": article_counter,
+                    "target": target_count,
+                    "attempted": total_attempted,
+                }
         
         if not pending_tasks:
             break
@@ -236,6 +285,8 @@ async def process_topic(
         
         # Process completed tasks
         new_pending = []
+        progress_updated = False
+        
         for task, title in pending_tasks:
             if task in done:
                 page_data = await task
@@ -253,15 +304,7 @@ async def process_topic(
                         collected_articles.append(article_data)
                         local_visited_titles.add(page_data["title"])
                         article_counter += 1
-                        
-                        # Update progress
-                        async with progress_lock:
-                            progress_dict[topic] = {
-                                "collected": article_counter,
-                                "target": target_count,
-                                "attempted": total_attempted,
-                            }
-                            total_articles_counter[0] += 1
+                        progress_updated = True
                         
                         # Fetch links for next batch
                         if len(collected_articles) < target_count:
@@ -285,14 +328,33 @@ async def process_topic(
             else:
                 new_pending.append((task, title))
         
+        # Update progress after processing batch (even if no articles collected)
+        if progress_updated or len(done) > 0:
+            async with progress_lock:
+                progress_dict[topic] = {
+                    "collected": article_counter,
+                    "target": target_count,
+                    "attempted": total_attempted,
+                }
+                if progress_updated:
+                    total_articles_counter[0] += 1
+        
         pending_tasks = new_pending
         
-        # Small delay to avoid hammering the API
-        await asyncio.sleep(random.uniform(0.1, 0.3))
+        # Small delay to avoid hammering the API (reduced since we limit concurrency)
+        await asyncio.sleep(random.uniform(0.05, 0.1))
     
     # Cancel any remaining pending tasks
     for task, _ in pending_tasks:
         task.cancel()
+    
+    # Final progress update before saving
+    async with progress_lock:
+        progress_dict[topic] = {
+            "collected": article_counter,
+            "target": target_count,
+            "attempted": total_attempted,
+        }
     
     # Save final results
     await asyncio.to_thread(save_intermediate_results, topic, collected_articles, article_counter, final_save=True)
@@ -429,8 +491,8 @@ async def main_async():
     num_topics = len(topics)
     # Get target count from environment variable, default to 600
     target_count = int(os.getenv("ARTICLES_PER_TOPIC", "600"))
-    # Get max concurrent requests from env or default to 100
-    max_concurrent = int(os.getenv("MAX_CONCURRENT", "100"))
+    # Get max concurrent requests from env or default to 10 (to avoid rate limiting)
+    max_concurrent = int(os.getenv("MAX_CONCURRENT", "10"))
     
     print(f"\n📊 Configuration:")
     print(f"   Topics to scrape: {num_topics}")
