@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Data files (will be downloaded from S3 at runtime)
+data/*.json
+data/*.zip
+data/scraped_data/
+
+# Jupyter Notebooks
+notebooks/
+*.ipynb
+.ipynb_checkpoints
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+
+# Build and deployment
+*.dockerfile
+docker-compose.yml
+.dockerignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Makefile and setup scripts (not needed in container)
+Makefile
+setup.sh
+
+# Node modules (if any)
+node_modules/
+package-lock.json
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
